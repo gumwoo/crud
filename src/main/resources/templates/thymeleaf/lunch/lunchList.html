@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{thymeleaf/cmm/layout/subLayout}">
+<head>
+    <meta charset="UTF-8">
+    <title>점심비 내역</title>
+    <style>
+        /* 전체 컨테이너 */
+        .lunch-list-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f8f9fc;
+            min-height: 100vh;
+        }
+        
+        /* 헤더 */
+        .list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .list-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin: 0;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-primary {
+            padding: 10px 20px;
+            background: #4361ee;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background: #3651d4;
+        }
+        
+        /* 필터 영역 */
+        .filter-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .filter-row input[type="month"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        /* 테이블 카드 */
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow-x: auto;
+        }
+        
+        /* 테이블 */
+        .lunch-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .lunch-table thead {
+            background: #f8f9fc;
+        }
+        
+        .lunch-table th {
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+            white-space: nowrap;
+        }
+        
+        .lunch-table td {
+            padding: 12px 8px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+            white-space: nowrap;
+        }
+        
+        .lunch-table tbody tr:hover {
+            background: #f8f9fc;
+        }
+        
+        /* 정산 완료된 행 */
+        .lunch-table tbody tr.settled {
+            background: #d9d9d9;
+            color: #666;
+        }
+        
+        .lunch-table tbody tr.settled:hover {
+            background: #d0d0d0;
+        }
+        
+        /* 총합 행 */
+        .lunch-table tfoot tr {
+            background: #f0f4ff;
+            font-weight: 600;
+        }
+        
+        .lunch-table tfoot td {
+            padding: 15px 8px;
+            border-top: 2px solid #4361ee;
+        }
+        
+        /* 송금액 행 */
+        .transfer-row td {
+            background: #fff5e6;
+        }
+        
+        .amount-positive {
+            color: #d9534f;
+        }
+        
+        .amount-negative {
+            color: #4361ee;
+        }
+        
+        /* 정산완료 버튼 */
+        .btn-settlement {
+            padding: 6px 12px;
+            background: white;
+            color: #4361ee;
+            border: 1px solid #4361ee;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-settlement:hover {
+            background: #4361ee;
+            color: white;
+        }
+        
+        .btn-settlement:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* 관리 버튼 */
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 4px 8px;
+            color: #666;
+            transition: color 0.3s;
+        }
+        
+        .btn-icon:hover {
+            color: #4361ee;
+        }
+        
+        .btn-delete:hover {
+            color: #d9534f;
+        }
+
+        /* 대표 정산자 정보 */
+        .representative-info {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .representative-info p {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .representative-info .account {
+            color: #4361ee;
+            font-weight: 700;
+        }
+        
+        /* 모달 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        
+        .modal-close:hover {
+            color: #333;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-body p {
+            margin: 10px 0;
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .btn-secondary {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e5e5;
+        }
+        
+        /* 안내 패널 */
+        .info-panel {
+            background: #f8f9fc;
+            border-left: 4px solid #4361ee;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        
+        .info-panel h4 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .info-panel ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .info-panel li {
+            margin-bottom: 8px;
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .highlight {
+            background: #d9d9d9;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        /* 반응형 */
+        @media (max-width: 1200px) {
+            .lunch-table {
+                font-size: 12px;
+            }
+            
+            .lunch-table th,
+            .lunch-table td {
+                padding: 8px 4px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div layout:fragment="content">
+        <div class="lunch-list-container">
+            <!-- 헤더 -->
+            <div class="list-header">
+                <h2>📋 점심비 내역</h2>
+                <div class="header-actions">
+                    <button class="btn-primary" onclick="location.href='/lunch/lunchForm.do'">
+                        ✏️ 내역 등록
+                    </button>
+                </div>
+            </div>
+
+            <!-- 안내 패널 -->
+            <div class="info-panel">
+                <h4>이 화면은 점심·커피 내역을 조회하고, 각 사용자별 실제 결제 금액을 기반으로 자동 정산 처리하는 핵심 관리 페이지</h4>
+                <ol>
+                    <li><strong>결제자(대표 지불자)</strong>는 당일 전체 금액을 선결제한 사용자로, 색 배경에 <span class="highlight">(#D9D9D9)</span> 이 적용되어 시각적으로 구분됩니다.</li>
+                    <li>각 행의 우측에는 수정, 삭제, 정산 완료 버튼이 존재하며, 사용자가 송금 완료 후 "정산완료"를 클릭하면 버튼이 비활성화되고 상태가 변경됩니다.</li>
+                    <li><strong>+면 받아야 할 돈, -면 보내야 할 돈</strong></li>
+                </ol>
+            </div>
+            
+            <!-- 필터 영역 -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <input type="month" id="monthFilter" value="">
+                </div>
+            </div>
+            
+            <!-- 테이블 카드 -->
+            <div class="table-card">
+                <table class="lunch-table">
+                    <thead>
+                        <tr>
+                            <th>날짜</th>
+                            <th>가게</th>
+                            <th>박용복</th>
+                            <th>우락일</th>
+                            <th>조선영</th>
+                            <th>문드희</th>
+                            <th>강건우</th>
+                            <th>한승준</th>
+                            <th>합계</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lunchTableBody">
+                        <!-- 데이터가 여기에 동적으로 추가됩니다 -->
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2">총금액</td>
+                            <td id="totalPark">0</td>
+                            <td id="totalWoo">0</td>
+                            <td id="totalJo">0</td>
+                            <td id="totalMoon">0</td>
+                            <td id="totalKang">0</td>
+                            <td id="totalHan">0</td>
+                            <td id="totalAmount">0</td>
+                            <td></td>
+                        </tr>
+                        <tr class="transfer-row">
+                            <td colspan="2">송금액</td>
+                            <td id="transferPark">0</td>
+                            <td id="transferWoo">0</td>
+                            <td id="transferJo">0</td>
+                            <td id="transferMoon">0</td>
+                            <td id="transferKang">0</td>
+                            <td id="transferHan">0</td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td colspan="10" style="padding: 15px;">
+                                <button class="btn-settlement" onclick="openSettlementModal('park')">정산완료</button>
+                                <button class="btn-settlement" onclick="openSettlementModal('woo')">정산완료</button>
+                                <button class="btn-settlement" onclick="openSettlementModal('jo')">정산완료</button>
+                                <button class="btn-settlement" onclick="openSettlementModal('moon')">정산완료</button>
+                                <button class="btn-settlement" onclick="openSettlementModal('kang')">정산완료</button>
+                                <button class="btn-settlement" onclick="openSettlementModal('han')">정산완료</button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            
+            <!-- 대표 정산자 정보 -->
+            <div class="representative-info">
+                <p>010 8254 9904 국민: <span class="account">이승은</span></p>
+            </div>
+        </div>
+        
+        <!-- 정산완료 모달 -->
+        <div class="modal" id="settlementModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>정산을 완료 처리하시겠습니까?</h3>
+                    <button class="modal-close" onclick="closeModal('settlementModal')">×</button>
+                </div>
+                <div class="modal-body">
+                    <p>완료 후에는 해당 내역이 수정 불가 상태로 전환됩니다.</p>
+                    <p>정산이 완료된 항목은 목록에서 회색으로 표시됩니다.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="closeModal('settlementModal')">취소</button>
+                    <button class="btn-primary" onclick="confirmSettlement()">정산 완료</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 삭제 모달 -->
+        <div class="modal" id="deleteModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>이 내역을 삭제하시겠습니까?</h3>
+                    <button class="modal-close" onclick="closeModal('deleteModal')">×</button>
+                </div>
+                <div class="modal-body">
+                    <p>삭제 후에는 복구가 불가합니다.</p>
+                    <p>필요한 경우 삭제 전 내용을 확인해주세요.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="closeModal('deleteModal')">취소</button>
+                    <button class="btn-primary" style="background: #d9534f;" onclick="confirmDelete()">삭제하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script th:inline="javascript">
+        let currentLunchId = null; // 현재 선택된 내역 ID
+        let currentUserId = null; // 현재 선택된 사용자 ID
+        
+        // 사용자 목록 (순서 중요 - 테이블 컬럼 순서와 일치)
+        const users = [
+            { id: 'park', name: '박용복' },
+            { id: 'woo', name: '우락일' },
+            { id: 'jo', name: '조선영' },
+            { id: 'moon', name: '문드희' },
+            { id: 'kang', name: '강건우' },
+            { id: 'han', name: '한승준' }
+        ];
+        
+        $(document).ready(function() {
+            // 현재 월로 초기화
+            const today = new Date();
+            const currentMonth = today.toISOString().slice(0, 7);
+            $('#monthFilter').val(currentMonth);
+            
+            // 데이터 로드
+            loadLunchList();
+            
+            // 월 변경 이벤트
+            $('#monthFilter').on('change', function() {
+                loadLunchList();
+            });
+        });
+        
+        /**
+         * 점심 내역 목록 조회
+         */
+        function loadLunchList() {
+            const month = $('#monthFilter').val();
+            if (!month) return;
+            
+            const [year, monthNum] = month.split('-');
+            const startDate = `${year}-${monthNum}-01`;
+            const lastDay = new Date(year, monthNum, 0).getDate();
+            const endDate = `${year}-${monthNum}-${lastDay}`;
+            
+            const params = {
+                startDate: startDate,
+                endDate: endDate,
+                settlementStatus: '' // 전체 조회
+            };
+            
+            $.ajax({
+                url: '/lunch/getLunchList.do',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(params),
+                success: function(response) {
+                    if (response.success) {
+                        renderTable(response.data);
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('조회 오류:', error);
+                    alert('조회 중 오류가 발생했습니다.');
+                }
+            });
+        }
+        
+        /**
+         * 테이블 렌더링
+         */
+        function renderTable(data) {
+            const lunchList = data.lunchList || [];
+            const summary = data.summary || {};
+            
+            // 테이블 바디 렌더링
+            const tbody = $('#lunchTableBody');
+            tbody.empty();
+            
+            if (lunchList.length === 0) {
+                tbody.html('<tr><td colspan="10" style="padding: 40px; text-align: center; color: #999;">조회된 내역이 없습니다.</td></tr>');
+                resetSummary();
+                return;
+            }
+            
+            lunchList.forEach(lunch => {
+                const row = createTableRow(lunch);
+                tbody.append(row);
+            });
+            
+            // 총합 및 송금액 렌더링
+            renderSummary(summary);
+        }
+
+        /**
+         * 테이블 행 생성
+         */
+        function createTableRow(lunch) {
+            const isSettled = lunch.settlementStatus === '완료';
+            const rowClass = isSettled ? 'settled' : '';
+            
+            // 날짜 포맷 (MM-DD)
+            const dateStr = lunch.lunchDate ? lunch.lunchDate.substring(5, 10) : '';
+            
+            // 참여자별 금액 맵 생성
+            const amountMap = {};
+            if (lunch.participants) {
+                lunch.participants.forEach(p => {
+                    amountMap[p.userId] = p.amount;
+                });
+            }
+            
+            // 각 사용자 컬럼
+            let userCols = '';
+            users.forEach(user => {
+                const amount = amountMap[user.id] || 0;
+                const displayAmount = amount > 0 ? amount.toLocaleString() : '-';
+                userCols += `<td>${displayAmount}</td>`;
+            });
+            
+            // 관리 버튼
+            const editBtn = isSettled ? '' : `<button class="btn-icon" onclick="editLunch(${lunch.lunchId})" title="수정">✏️</button>`;
+            const deleteBtn = `<button class="btn-icon btn-delete" onclick="openDeleteModal(${lunch.lunchId})" title="삭제">🗑️</button>`;
+            
+            return `
+                <tr class="${rowClass}">
+                    <td>${dateStr}</td>
+                    <td>${lunch.storeName || ''}</td>
+                    ${userCols}
+                    <td>${lunch.totalAmount.toLocaleString()}</td>
+                    <td>
+                        ${editBtn}
+                        ${deleteBtn}
+                    </td>
+                </tr>
+            `;
+        }
+        
+        /**
+         * 총합 및 송금액 렌더링
+         */
+        function renderSummary(summary) {
+            if (!summary || !summary.userTotalMap) {
+                resetSummary();
+                return;
+            }
+            
+            let totalAmount = 0;
+            
+            // 각 사용자별 총합
+            users.forEach(user => {
+                const total = summary.userTotalMap[user.id] || 0;
+                $(`#total${capitalize(user.id)}`).text(total.toLocaleString());
+                totalAmount += total;
+            });
+            
+            // 전체 총합
+            $('#totalAmount').text(totalAmount.toLocaleString());
+            
+            // 각 사용자별 송금액
+            users.forEach(user => {
+                const transfer = summary.userTransferMap[user.id] || 0;
+                const $cell = $(`#transfer${capitalize(user.id)}`);
+                
+                if (transfer > 0) {
+                    // 보낼 돈 (양수)
+                    $cell.html(`<span class="amount-positive">+${transfer.toLocaleString()}</span>`);
+                } else if (transfer < 0) {
+                    // 받을 돈 (음수)
+                    $cell.html(`<span class="amount-negative">${transfer.toLocaleString()}</span>`);
+                } else {
+                    $cell.text('0');
+                }
+            });
+        }
+        
+        /**
+         * 총합 초기화
+         */
+        function resetSummary() {
+            users.forEach(user => {
+                $(`#total${capitalize(user.id)}`).text('0');
+                $(`#transfer${capitalize(user.id)}`).text('0');
+            });
+            $('#totalAmount').text('0');
+        }
+        
+        /**
+         * 첫 글자 대문자 변환 (userId → UserId)
+         */
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        /**
+         * 수정 화면 이동
+         */
+        function editLunch(lunchId) {
+            location.href = `/lunch/lunchForm.do/${lunchId}`;
+        }
+        
+        /**
+         * 삭제 모달 열기
+         */
+        function openDeleteModal(lunchId) {
+            currentLunchId = lunchId;
+            $('#deleteModal').addClass('show');
+        }
+        
+        /**
+         * 정산완료 모달 열기
+         */
+        function openSettlementModal(userId) {
+            currentUserId = userId;
+            $('#settlementModal').addClass('show');
+        }
+        
+        /**
+         * 모달 닫기
+         */
+        function closeModal(modalId) {
+            $(`#${modalId}`).removeClass('show');
+        }
+        
+        /**
+         * 삭제 확인
+         */
+        function confirmDelete() {
+            if (!currentLunchId) return;
+            
+            $.ajax({
+                url: '/lunch/deleteLunch.do',
+                type: 'POST',
+                data: { lunchId: currentLunchId },
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        closeModal('deleteModal');
+                        loadLunchList(); // 목록 새로고침
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('삭제 오류:', error);
+                    alert('삭제 중 오류가 발생했습니다.');
+                }
+            });
+        }
+        
+        /**
+         * 정산완료 확인
+         */
+        function confirmSettlement() {
+            if (!currentUserId) return;
+            
+            // TODO: 실제로는 해당 사용자의 모든 미정산 내역을 일괄 처리
+            // 현재는 단일 내역 처리 예시
+            
+            const params = {
+                lunchId: currentLunchId, // 실제로는 사용자별 일괄 처리 필요
+                updateUserId: '[[${loginVO.userId}]]'
+            };
+            
+            $.ajax({
+                url: '/lunch/completeSettlement.do',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(params),
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        closeModal('settlementModal');
+                        loadLunchList(); // 목록 새로고침
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('정산완료 처리 오류:', error);
+                    alert('처리 중 오류가 발생했습니다.');
+                }
+            });
+        }
+        
+        // 모달 외부 클릭 시 닫기
+        $(document).on('click', '.modal', function(e) {
+            if ($(e.target).hasClass('modal')) {
+                $(this).removeClass('show');
+            }
+        });
+    </script>
+</body>
+</html>

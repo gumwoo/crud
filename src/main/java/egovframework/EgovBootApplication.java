@@ -1,5 +1,6 @@
 package egovframework;
 
+import org.mybatis.spring.annotation.MapperScan; // 👈 import 확인
 import org.springframework.boot.Banner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -11,7 +12,14 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @ServletComponentScan
-@SpringBootApplication(scanBasePackages = {"egovframework"})
+@SpringBootApplication(scanBasePackages = {"egovframework", "biz"}) // 👈 이것은 @Service, @Controller 등을 스캔 (유지)
+@MapperScan(basePackages = { // 👈 [수정] Mapper 인터페이스가 있는 패키지만 정확히 지정
+        "egovframework.com.cmm.dao",
+        "biz.file.dao",
+        "biz.login.dao",
+        "biz.lunch.dao",
+        "biz.menu.dao"
+})
 public class EgovBootApplication extends SpringBootServletInitializer {
 	
 	/**

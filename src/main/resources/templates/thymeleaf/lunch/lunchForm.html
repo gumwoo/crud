@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{thymeleaf/cmm/layout/subLayout}">
+<head>
+    <meta charset="UTF-8">
+    <title>점심/커피 내역 등록</title>
+    <style>
+        /* 전체 컨테이너 */
+        .lunch-form-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f8f9fc;
+            min-height: 100vh;
+        }
+        
+        /* 제목 영역 */
+        .form-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            margin: 0;
+        }
+        
+        .form-header .icon {
+            color: #4361ee;
+            margin-right: 10px;
+            font-size: 28px;
+        }
+        
+        /* 폼 카드 */
+        .form-card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        /* 폼 그룹 */
+        .form-group {
+            margin-bottom: 35px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        
+        .form-group input[type="date"],
+        .form-group input[type="text"] {
+            width: 100%;
+            max-width: 500px;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #4361ee;
+        }
+        
+        .form-group input::placeholder {
+            color: #999;
+        }
+        
+        /* 참석자/계산자 선택 영역 */
+        .person-selection {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-bottom: 35px;
+        }
+        
+        .selection-box {
+            background: #f8f9fc;
+            border-radius: 12px;
+            padding: 25px;
+        }
+        
+        .selection-box h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 20px 0;
+        }
+        
+        /* 사람 버튼 그리드 */
+        .person-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        
+        .person-btn {
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .person-btn:hover {
+            border-color: #4361ee;
+            color: #4361ee;
+        }
+        
+        /* 참석자 선택됨 */
+        .person-btn.selected-participant {
+            background: #4361ee;
+            border-color: #4361ee;
+            color: white;
+        }
+        
+        /* 계산자 선택됨 */
+        .person-btn.selected-payer {
+            background: #4361ee;
+            border-color: #4361ee;
+            color: white;
+        }
+        
+        .person-btn.add-more {
+            background: #f0f0f0;
+            border-color: #f0f0f0;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .person-btn.add-more:hover {
+            background: #e5e5e5;
+            border-color: #e5e5e5;
+        }
+
+        /* 개인별 금액 입력 영역 */
+        .amount-input-section {
+            background: #f8f9fc;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 35px;
+        }
+        
+        .amount-input-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 20px 0;
+        }
+        
+        .amount-input-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .amount-input-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 8px;
+            padding: 12px 16px;
+        }
+        
+        .amount-input-item label {
+            min-width: 80px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin: 0;
+        }
+        
+        .amount-input-item input {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+            text-align: right;
+        }
+        
+        .amount-input-item .unit {
+            margin-left: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        /* 등록하기 버튼 */
+        .submit-btn-wrapper {
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .submit-btn {
+            padding: 14px 60px;
+            background: #4361ee;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .submit-btn:hover {
+            background: #3651d4;
+        }
+        
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        /* 반응형 */
+        @media (max-width: 1200px) {
+            .person-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .person-selection {
+                grid-template-columns: 1fr;
+            }
+            
+            .person-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .amount-input-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div layout:fragment="content">
+        <div class="lunch-form-container">
+            <!-- 헤더 -->
+            <div class="form-header">
+                <span class="icon">✏️</span>
+                <h2>점심/커피 내역 등록</h2>
+            </div>
+            
+            <!-- 폼 카드 -->
+            <div class="form-card">
+                <form id="lunchForm">
+                    <!-- 날짜 -->
+                    <div class="form-group">
+                        <label for="lunchDate">날짜</label>
+                        <input type="date" id="lunchDate" name="lunchDate" required>
+                    </div>
+                    
+                    <!-- 가게명 -->
+                    <div class="form-group">
+                        <label for="storeName">가게명</label>
+                        <input type="text" id="storeName" name="storeName" 
+                               placeholder="예: 맥북이집, 커피빈" required>
+                    </div>
+                    
+                    <!-- 참석자/계산자 선택 -->
+                    <div class="person-selection">
+                        <!-- 참석자 선택 -->
+                        <div class="selection-box">
+                            <h3>참석자 선택</h3>
+                            <div class="person-grid" id="participantGrid">
+                                <button type="button" class="person-btn" data-user-id="park" data-user-name="박용복">박용복</button>
+                                <button type="button" class="person-btn" data-user-id="woo" data-user-name="우락일">우락일</button>
+                                <button type="button" class="person-btn" data-user-id="jo" data-user-name="조선영">조선영</button>
+                                <button type="button" class="person-btn" data-user-id="moon" data-user-name="문드희">문드희</button>
+                                <button type="button" class="person-btn" data-user-id="lee" data-user-name="이윤지">이윤지</button>
+                                <button type="button" class="person-btn" data-user-id="kang" data-user-name="강건우">강건우</button>
+                                <button type="button" class="person-btn" data-user-id="han" data-user-name="한승준">한승준</button>
+                                <button type="button" class="person-btn" data-user-id="lim" data-user-name="임서현">임서현</button>
+                                <button type="button" class="person-btn" data-user-id="choi" data-user-name="최광현">최광현</button>
+                                <button type="button" class="person-btn" data-user-id="kim" data-user-name="김언종">김언종</button>
+                                <button type="button" class="person-btn add-more">+ 추가</button>
+                            </div>
+                        </div>
+                        
+                        <!-- 계산자 선택 -->
+                        <div class="selection-box">
+                            <h3>계산자 선택</h3>
+                            <div class="person-grid" id="payerGrid">
+                                <button type="button" class="person-btn payer-btn" data-user-id="park" data-user-name="박용복">박용복</button>
+                                <button type="button" class="person-btn payer-btn" data-user-id="woo" data-user-name="우락일">우락일</button>
+                                <button type="button" class="person-btn payer-btn" data-user-id="jo" data-user-name="조선영">조선영</button>
+                                <button type="button" class="person-btn payer-btn" data-user-id="moon" data-user-name="문드희">문드희</button>
+                                <button type="button" class="person-btn payer-btn" data-user-id="lee" data-user-name="이윤지">이윤지</button>
+                                <button type="button" class="person-btn payer-btn" data-user-id="kang" data-user-name="강건우">강건우</button>
+                                <button type="button" class="person-btn payer-btn" data-user-id="han" data-user-name="한승준">한승준</button>
+                                <button type="button" class="person-btn payer-btn" data-user-id="lim" data-user-name="임서현">임서현</button>
+                                <button type="button" class="person-btn payer-btn" data-user-id="choi" data-user-name="최광현">최광현</button>
+                                <button type="button" class="person-btn payer-btn" data-user-id="kim" data-user-name="김언종">김언종</button>
+                                <button type="button" class="person-btn add-more">+ 추가</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 개인별 금액 입력 -->
+                    <div class="amount-input-section">
+                        <h3>개인별 금액 입력</h3>
+                        <div class="amount-input-grid" id="amountInputGrid">
+                            <div style="color: #999; text-align: center; padding: 20px;">
+                                참석자를 선택하면 여기에 입력칸이 생성됩니다.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 등록 버튼 -->
+                    <div class="submit-btn-wrapper">
+                        <button type="submit" class="submit-btn">등록하기</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script th:inline="javascript">
+        $(document).ready(function() {
+            // 오늘 날짜 기본값 설정
+            const today = new Date().toISOString().split('T')[0];
+            $('#lunchDate').val(today);
+            
+            // 선택된 참석자와 계산자
+            let selectedParticipants = [];
+            let selectedPayer = null;
+            
+            // 참석자 선택/해제
+            $('#participantGrid .person-btn:not(.add-more)').on('click', function() {
+                const userId = $(this).data('user-id');
+                const userName = $(this).data('user-name');
+                
+                if ($(this).hasClass('selected-participant')) {
+                    // 선택 해제
+                    $(this).removeClass('selected-participant');
+                    selectedParticipants = selectedParticipants.filter(p => p.userId !== userId);
+                } else {
+                    // 선택
+                    $(this).addClass('selected-participant');
+                    selectedParticipants.push({ userId, userName });
+                }
+                
+                // 금액 입력 칸 업데이트
+                updateAmountInputs();
+            });
+            
+            // 계산자 선택 (단일 선택)
+            $('#payerGrid .payer-btn').on('click', function() {
+                const userId = $(this).data('user-id');
+                const userName = $(this).data('user-name');
+                
+                // 기존 선택 해제
+                $('#payerGrid .payer-btn').removeClass('selected-payer');
+                
+                // 새로 선택
+                $(this).addClass('selected-payer');
+                selectedPayer = { userId, userName };
+            });
+            
+            // 금액 입력 칸 동적 생성
+            function updateAmountInputs() {
+                const container = $('#amountInputGrid');
+                container.empty();
+                
+                if (selectedParticipants.length === 0) {
+                    container.html('<div style="color: #999; text-align: center; padding: 20px;">참석자를 선택하면 여기에 입력칸이 생성됩니다.</div>');
+                    return;
+                }
+                
+                selectedParticipants.forEach(person => {
+                    const html = `
+                        <div class="amount-input-item">
+                            <label>${person.userName}</label>
+                            <input type="number" 
+                                   class="amount-input" 
+                                   data-user-id="${person.userId}"
+                                   data-user-name="${person.userName}"
+                                   min="0" 
+                                   step="100" 
+                                   placeholder="0"
+                                   required>
+                            <span class="unit">원</span>
+                        </div>
+                    `;
+                    container.append(html);
+                });
+            }
+            
+            // 폼 제출
+            $('#lunchForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                // 유효성 검사
+                if (!selectedPayer) {
+                    alert('계산자를 선택해주세요.');
+                    return;
+                }
+                
+                if (selectedParticipants.length === 0) {
+                    alert('참석자를 선택해주세요.');
+                    return;
+                }
+                
+                // 개인별 금액 수집
+                const participants = [];
+                let totalAmount = 0;
+                let hasError = false;
+                
+                $('.amount-input').each(function() {
+                    const userId = $(this).data('user-id');
+                    const userName = $(this).data('user-name');
+                    const amount = parseInt($(this).val()) || 0;
+                    
+                    if (amount <= 0) {
+                        alert(userName + '의 금액을 입력해주세요.');
+                        hasError = true;
+                        return false;
+                    }
+                    
+                    participants.push({
+                        userId: userId,
+                        userName: userName,
+                        amount: amount
+                    });
+                    
+                    totalAmount += amount;
+                });
+                
+                if (hasError) return;
+                
+                // 데이터 구성
+                const formData = {
+                    lunchDate: $('#lunchDate').val(),
+                    storeName: $('#storeName').val(),
+                    // lunchType은 서버에서 가게명 기반으로 자동 설정
+                    payerUserId: selectedPayer.userId,
+                    payerUserName: selectedPayer.userName,
+                    totalAmount: totalAmount,
+                    participants: participants
+                };
+                
+                console.log('전송 데이터:', formData);
+                
+                // AJAX 전송
+                $.ajax({
+                    url: '/lunch/registerLunch.do',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        if (response.success) {
+                            alert(response.message);
+                            // 목록 페이지로 이동
+                            location.href = '/lunch/lunchList.do';
+                        } else {
+                            alert(response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('오류:', error);
+                        alert('등록 중 오류가 발생했습니다.');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

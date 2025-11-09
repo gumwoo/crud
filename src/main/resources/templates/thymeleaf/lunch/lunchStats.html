@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{thymeleaf/cmm/layout/subLayout}">
+<head>
+    <meta charset="UTF-8">
+    <title>점심 통계 현황</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* 전체 컨테이너 */
+        .stats-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f8f9fc;
+            min-height: 100vh;
+        }
+        
+        /* 헤더 */
+        .stats-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .stats-header h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #4361ee;
+            margin: 0 0 10px 0;
+        }
+        
+        .stats-header p {
+            font-size: 14px;
+            color: #666;
+            margin: 0;
+        }
+        
+        /* 차트 그리드 */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .chart-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 350px;
+        }
+        
+        /* 사용자별 통계 */
+        .user-stats-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .user-stats-section h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin: 0 0 25px 0;
+            text-align: center;
+        }
+        
+        .user-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .user-stat-box {
+            background: #f8f9fc;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+        
+        .user-stat-box:hover {
+            border-color: #4361ee;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15);
+        }
+        
+        .user-stat-box .name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .user-stat-box .amount {
+            font-size: 24px;
+            font-weight: 700;
+            color: #4361ee;
+            margin-bottom: 8px;
+        }
+        
+        .user-stat-box .count {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        /* 데이터 없음 모달 */
+        .no-data-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .no-data-modal.show {
+            display: flex;
+        }
+        
+        .no-data-content {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        
+        .no-data-content h3 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin: 0 0 15px 0;
+        }
+        
+        .no-data-content p {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.6;
+            margin: 10px 0;
+        }
+        
+        .no-data-content .btn-confirm {
+            margin-top: 25px;
+            padding: 12px 40px;
+            background: #4361ee;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .no-data-content .btn-confirm:hover {
+            background: #3651d4;
+        }
+        
+        /* 로딩 */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(3, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        /* 반응형 */
+        @media (max-width: 1024px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .user-stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div layout:fragment="content">
+        <div class="stats-container">
+            <!-- 헤더 -->
+            <div class="stats-header">
+                <h2>📊 정산 통계 현황</h2>
+                <p>월별/사용자별 점심·커피 소비 현황을 확인할 수 있습니다</p>
+            </div>
+            
+            <!-- 로딩 표시 -->
+            <div class="loading" id="loadingIndicator">
+                통계 데이터를 불러오는 중입니다
+            </div>
+            
+            <!-- 차트 영역 -->
+            <div class="chart-grid" id="chartSection" style="display: none;">
+                <!-- 월자별 자출 추이 -->
+                <div class="chart-card">
+                    <h3>월자별 지출 추이</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- 사용자별 통계 -->
+                <div class="chart-card">
+                    <h3>사용자별 통계</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="userChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 사용자별 상세 통계 -->
+            <div class="user-stats-section" id="userStatsSection" style="display: none;">
+                <h3>사용자별 상세</h3>
+                <div class="user-stats-grid" id="userStatsGrid">
+                    <!-- 동적 생성 -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 데이터 없음 모달 -->
+        <div class="no-data-modal" id="noDataModal">
+            <div class="no-data-content">
+                <h3>통계 데이터를 생성할 수 없습니다.</h3>
+                <p>조회된 날짜의 통계가 존재하지 않습니다.</p>
+                <p>조회 조건을 다시 설정하거나 확인해주세요.</p>
+                <button class="btn-confirm" onclick="closeNoDataModal()">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script th:inline="javascript">
+        let monthlyChartInstance = null;
+        let userChartInstance = null;
+        
+        $(document).ready(function() {
+            // 현재 연도/월 가져오기
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            
+            // 통계 데이터 로드
+            loadStatistics(year, month);
+        });
+        
+        /**
+         * 통계 데이터 로드
+         */
+        function loadStatistics(year, month) {
+            const params = {
+                year: year,
+                month: month
+            };
+            
+            $.ajax({
+                url: '/lunch/getStatistics.do',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(params),
+                success: function(response) {
+                    $('#loadingIndicator').hide();
+                    
+                    if (response.success) {
+                        const data = response.data;
+                        
+                        // 데이터 확인
+                        if (!data.monthlyStatistics || data.monthlyStatistics.length === 0) {
+                            showNoDataModal();
+                            return;
+                        }
+                        
+                        // 차트 및 통계 렌더링
+                        renderCharts(data);
+                        renderUserStats(data.userStatistics || []);
+                        
+                        $('#chartSection').show();
+                        $('#userStatsSection').show();
+                    } else {
+                        showNoDataModal();
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('통계 조회 오류:', error);
+                    $('#loadingIndicator').hide();
+                    showNoDataModal();
+                }
+            });
+        }
+        
+        /**
+         * 차트 렌더링
+         */
+        function renderCharts(data) {
+            // 1. 월자별 자출 추이 차트
+            renderMonthlyChart(data.monthlyStatistics || []);
+            
+            // 2. 사용자별 통계 차트
+            renderUserChart(data.userStatistics || []);
+        }
+        
+        /**
+         * 월별 차트 렌더링
+         */
+        function renderMonthlyChart(monthlyData) {
+            const ctx = document.getElementById('monthlyChart');
+            
+            // 기존 차트 제거
+            if (monthlyChartInstance) {
+                monthlyChartInstance.destroy();
+            }
+            
+            // 데이터 추출
+            const labels = monthlyData.map(item => {
+                const month = item.month || '';
+                return month.substring(5); // MM만 추출 (11-01 → 01)
+            });
+            
+            const lunchData = monthlyData.map(item => item.lunch_count || 0);
+            const coffeeData = monthlyData.map(item => item.coffee_count || 0);
+            
+            // 차트 생성
+            monthlyChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '점심',
+                            data: lunchData,
+                            backgroundColor: '#4361ee',
+                            borderRadius: 6
+                        },
+                        {
+                            label: '커피',
+                            data: coffeeData,
+                            backgroundColor: '#a0b9ff',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + 
+                                           context.parsed.y.toLocaleString() + '원';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString() + '원';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        /**
+         * 사용자별 차트 렌더링
+         */
+        function renderUserChart(userData) {
+            const ctx = document.getElementById('userChart');
+            
+            // 기존 차트 제거
+            if (userChartInstance) {
+                userChartInstance.destroy();
+            }
+            
+            // 데이터 추출
+            const labels = userData.map(item => item.user_name || '');
+            const amounts = userData.map(item => item.total_amount || 0);
+            
+            // 색상 배열
+            const colors = [
+                '#4361ee', '#7289da', '#5865f2', 
+                '#99aab5', '#43b581', '#faa61a'
+            ];
+            
+            // 차트 생성
+            userChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '총 지출',
+                        data: amounts,
+                        backgroundColor: colors,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '총 지출: ' + context.parsed.y.toLocaleString() + '원';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString() + '원';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        /**
+         * 사용자별 통계 박스 렌더링
+         */
+        function renderUserStats(userData) {
+            const container = $('#userStatsGrid');
+            container.empty();
+            
+            if (!userData || userData.length === 0) {
+                container.html('<p style="text-align: center; color: #999;">데이터가 없습니다.</p>');
+                return;
+            }
+            
+            userData.forEach(user => {
+                const name = user.user_name || '';
+                const amount = user.total_amount || 0;
+                const count = user.participation_count || 0;
+                
+                const html = `
+                    <div class="user-stat-box">
+                        <div class="name">${name}</div>
+                        <div class="amount">${amount.toLocaleString()}원</div>
+                        <div class="count">${count}회 (${count}회)</div>
+                    </div>
+                `;
+                
+                container.append(html);
+            });
+        }
+        
+        /**
+         * 데이터 없음 모달 표시
+         */
+        function showNoDataModal() {
+            $('#noDataModal').addClass('show');
+        }
+        
+        /**
+         * 데이터 없음 모달 닫기
+         */
+        function closeNoDataModal() {
+            $('#noDataModal').removeClass('show');
+            // 목록 페이지로 이동
+            location.href = '/lunch/lunchList.do';
+        }
+        
+        // 모달 외부 클릭 시 닫기
+        $(document).on('click', '.no-data-modal', function(e) {
+            if ($(e.target).hasClass('no-data-modal')) {
+                closeNoDataModal();
+            }
+        });
+    </script>
+</body>
+</html>
