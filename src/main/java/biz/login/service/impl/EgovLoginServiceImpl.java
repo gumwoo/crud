@@ -76,8 +76,10 @@ public class EgovLoginServiceImpl extends EgovAbstractServiceImpl implements Ego
 				return null;
 			}
 
-			// 3. 비밀번호 검증
-			String enpassword = EgovFileScrty.encryptPassword(vo.getPassword(), vo.getUserId());
+			// 3. 비밀번호 검증 (임시: 평문 비교)
+			// String enpassword = EgovFileScrty.encryptPassword(vo.getPassword(), vo.getUserId());
+			String enpassword = vo.getPassword(); // 임시: 평문 그대로 사용
+			
 			
 			if (!enpassword.equals(loginVO.getUserPassword())) {
 				// 비밀번호 불일치 - 실패 횟수 증가

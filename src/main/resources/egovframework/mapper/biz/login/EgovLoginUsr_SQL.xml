@@ -23,12 +23,8 @@
 		     , u.login_fail_co
 		     , u.acnt_lock_yn
 		     , u.use_yn
-		     , ur.role_cd
-		     , r.role_nm
 		  FROM tb_user u
 		  LEFT OUTER JOIN tb_dept d ON u.dept_cd = d.dept_cd
-		  LEFT OUTER JOIN tb_user_role ur ON u.user_id = ur.user_id
-		  LEFT OUTER JOIN tb_role r ON ur.role_cd = r.role_cd
 		 WHERE u.user_id = #{userId}
 		   AND u.user_sttus_cd = 'NORMAL'
 		   AND u.use_yn = 'Y'
@@ -125,12 +121,8 @@
 		     , u.user_sttus_cd
 		     , u.jbgd_cd
 		     , u.jssfc_cd
-		     , ur.role_cd
-		     , r.role_nm
-		  FROM tb_user u
-		  LEFT OUTER JOIN tb_dept d ON u.dept_cd = d.dept_cd
-		  LEFT OUTER JOIN tb_user_role ur ON u.user_id = ur.user_id
-		  LEFT OUTER JOIN tb_role r ON ur.role_cd = r.role_cd
-		 WHERE u.user_id = #{userId}
+		     FROM tb_user u
+		     LEFT OUTER JOIN tb_dept d ON u.dept_cd = d.dept_cd
+		     WHERE u.user_id = #{userId}
 	</select>
 </mapper>
