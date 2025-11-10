@@ -37,15 +37,12 @@ public interface LunchService {
     int deleteLunch(int lunchId) throws Exception;
     
     /**
-     * 점심/커피 내역 목록 조회 및 자동 집계
-     * - 기간별 내역 조회
-     * - 사용자별 부담금 자동 집계
-     * - 송금 금액 자동 계산
+     * 점심/커피 내역 목록 조회
      * @param params 조회 조건 (startDate, endDate, userId, settlementStatus 등)
-     * @return 내역 목록 및 집계 결과
+     * @return 내역 목록
      * @throws Exception
      */
-    Map<String, Object> getLunchList(Map<String, Object> params) throws Exception;
+    List<Map<String, Object>> getLunchList(Map<String, Object> params) throws Exception;
     
     /**
      * 사용자별/월별 통계 조회

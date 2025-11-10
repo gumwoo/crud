@@ -1,4 +1,4 @@
-package biz.lunch.dao;
+package biz.lunch.mapper;
 
 import java.util.List;
 import java.util.Map;

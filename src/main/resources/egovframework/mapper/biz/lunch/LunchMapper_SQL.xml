@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="biz.lunch.dao.LunchMapper">
+
+    <!-- 
+        점심비 정산 Mapper XML (설계도 기반 - Map 전용)
+        모든 파라미터와 결과가 Map<String,Object> 형태
+    -->
+
+    <!-- ===================================== -->
+    <!-- 1. 점심/커피 내역 등록 (registerLunch) -->
+    <!-- ===================================== -->
+    <insert id="registerLunch" parameterType="map">
+        <!-- Step 1: tb_lunch_master 등록 -->
+        WITH inserted_master AS (
+            INSERT INTO tb_lunch_master (
+                lunch_date,
+                store_name,
+                lunch_type,
+                total_amount,
+                payer_user_id,
+                payer_user_name,
+                settlement_status,
+                register_id,
+                register_date
+            ) VALUES (
+                #{lunchDate}::date,
+                #{storeName},
+                CASE 
+                    WHEN LOWER(#{storeName}) LIKE '%coffee%' 
+                      OR LOWER(#{storeName}) LIKE '%카페%'
+                      OR LOWER(#{storeName}) LIKE '%cafe%'
+                    THEN 'COFFEE'
+                    ELSE 'LUNCH'
+                END,
+                #{totalAmount}::numeric,
+                #{payerUserId},
+                #{payerUserName},
+                'PENDING',
+                #{payerUserId},
+                CURRENT_TIMESTAMP
+            )
+            RETURNING lunch_id
+        )
+        -- Step 2: tb_lunch_participant 등록 (participants 배열 처리)
+        INSERT INTO tb_lunch_participant (
+            lunch_id,
+            user_id,
+            user_name,
+            participant_amount,
+            register_id,
+            register_date
+        )
+        SELECT 
+            (SELECT lunch_id FROM inserted_master),
+            participant->>'userId',
+            participant->>'userName',
+            (participant->>'amount')::numeric,
+            #{payerUserId},
+            CURRENT_TIMESTAMP
+        FROM jsonb_array_elements(#{participants}::jsonb) AS participant
+    </insert>
+
+    <!-- ===================================== -->
+    <!-- 2. 점심/커피 내역 수정 (updateLunch) -->
+    <!-- ===================================== -->
+    <update id="updateLunch" parameterType="map">
+        <!-- Step 1: 기존 참여자 삭제 -->
+        DELETE FROM tb_lunch_participant
+        WHERE lunch_id = #{lunchId}::integer;
+        
+        <!-- Step 2: tb_lunch_master 수정 -->
+        UPDATE tb_lunch_master SET
+            lunch_date = #{lunchDate}::date,
+            store_name = #{storeName},
+            lunch_type = CASE 
+                WHEN LOWER(#{storeName}) LIKE '%coffee%' 
+                  OR LOWER(#{storeName}) LIKE '%카페%'
+                  OR LOWER(#{storeName}) LIKE '%cafe%'
+                THEN 'COFFEE'
+                ELSE 'LUNCH'
+            END,
+            total_amount = #{totalAmount}::numeric,
+            updt_id = #{updateUserId},
+            updt_date = CURRENT_TIMESTAMP
+        WHERE lunch_id = #{lunchId}::integer;
+        
+        <!-- Step 3: 새 참여자 등록 -->
+        INSERT INTO tb_lunch_participant (
+            lunch_id,
+            user_id,
+            user_name,
+            participant_amount,
+            register_id,
+            register_date
+        )
+        SELECT 
+            #{lunchId}::integer,
+            participant->>'userId',
+            participant->>'userName',
+            (participant->>'amount')::numeric,
+            #{updateUserId},
+            CURRENT_TIMESTAMP
+        FROM jsonb_array_elements(#{participants}::jsonb) AS participant
+    </update>
+
+    <!-- ===================================== -->
+    <!-- 3. 점심/커피 내역 삭제 (deleteLunch) -->
+    <!-- ===================================== -->
+    <delete id="deleteLunch" parameterType="int">
+        -- 참여자는 CASCADE로 자동 삭제됨
+        DELETE FROM tb_lunch_master
+        WHERE lunch_id = #{id}
+    </delete>
+
+    <!-- ===================================== -->
+    <!-- 4. 점심/커피 내역 목록 조회 (getLunchList) -->
+    <!-- ===================================== -->
+    <select id="getLunchList" parameterType="map" resultType="map">
+        SELECT 
+            m.lunch_id AS "lunchId",
+            m.lunch_date AS "lunchDate",
+            m.store_name AS "storeName",
+            m.lunch_type AS "lunchType",
+            m.total_amount AS "totalAmount",
+            m.payer_user_id AS "payerUserId",
+            m.payer_user_name AS "payerUserName",
+            m.settlement_status AS "settlementStatus",
+            m.register_date AS "registerDate",
+            -- 참여자 정보를 JSON 배열로 집계
+            COALESCE(
+                json_agg(
+                    json_build_object(
+                        'userId', p.user_id,
+                        'userName', p.user_name,
+                        'amount', p.participant_amount
+                    ) ORDER BY p.user_id
+                ) FILTER (WHERE p.user_id IS NOT NULL),
+                '[]'::json
+            ) AS "participants"
+        FROM tb_lunch_master m
+        LEFT JOIN tb_lunch_participant p ON m.lunch_id = p.lunch_id
+        <where>
+            <if test="startDate != null">
+                AND m.lunch_date &gt;= #{startDate}::date
+            </if>
+            <if test="endDate != null">
+                AND m.lunch_date &lt;= #{endDate}::date
+            </if>
+            <if test="userId != null">
+                AND (m.payer_user_id = #{userId} 
+                     OR p.user_id = #{userId})
+            </if>
+            <if test="settlementStatus != null">
+                AND m.settlement_status = #{settlementStatus}
+            </if>
+        </where>
+        GROUP BY 
+            m.lunch_id,
+            m.lunch_date,
+            m.store_name,
+            m.lunch_type,
+            m.total_amount,
+            m.payer_user_id,
+            m.payer_user_name,
+            m.settlement_status,
+            m.register_date
+        ORDER BY m.lunch_date DESC, m.lunch_id DESC
+    </select>
+
